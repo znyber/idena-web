@@ -19,7 +19,7 @@ import {
   privateKeyToAddress,
   privateKeyToPublicKey,
 } from '../../shared/utils/crypto'
-import {buyKey, getKeyById, getProvider, getRawTx} from '../../shared/api'
+import {getKeyById, getProvider, getRawTx, activateKey} from '../../shared/api'
 import {Transaction} from '../../shared/models/transaction'
 
 // eslint-disable-next-line react/prop-types
@@ -34,7 +34,8 @@ export function ActivateInvite({privateKey, onBack, onSkip, onNext}) {
 
   const coinbase = privateKeyToAddress(privateKey)
 
-  const {apiKeyId} = useSettingsState()
+  const {apiKeyId, apiKeyData} = useSettingsState()
+
   const {addPurchase, addPurchasedKey} = useSettingsDispatch()
 
   const {isLoading, data} = useQuery(
@@ -48,10 +49,11 @@ export function ActivateInvite({privateKey, onBack, onSkip, onNext}) {
   )
 
   const {data: provider} = useQuery(
-    ['get-provider-by-id', process.env.NEXT_PUBLIC_IDENA_MAIN_PROVIDER],
-    () => getProvider(process.env.NEXT_PUBLIC_IDENA_MAIN_PROVIDER),
+    ['get-provider-by-id', apiKeyData?.provider],
+    () => getProvider(apiKeyData?.provider),
     {
-      retry: false,
+      enabled: !!data && !!apiKeyData?.provider,
+      retry: true,
     }
   )
 
@@ -83,12 +85,9 @@ export function ActivateInvite({privateKey, onBack, onSkip, onNext}) {
 
       const tx = new Transaction().fromHex(rawTx)
       tx.sign(trimmedCode)
-      const result = await buyKey(
-        coinbase,
-        `0x${tx.toHex()}`,
-        process.env.NEXT_PUBLIC_IDENA_MAIN_PROVIDER
-      )
-      addPurchase(result.id, process.env.NEXT_PUBLIC_IDENA_MAIN_PROVIDER)
+
+      const result = await activateKey(coinbase, `0x${tx.toHex()}`)
+      addPurchase(result.id, result.provider)
     } catch (e) {
       setError(
         `Failed to activate invite: ${

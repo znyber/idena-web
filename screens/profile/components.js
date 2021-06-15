@@ -310,7 +310,7 @@ export function ValidationResultToast({epoch}) {
 
   const {colors} = useTheme()
 
-  const url = `https://scan.idena.io/identity/${address}/epoch/${epoch}/${
+  const url = `https://scan-idna.znyber.com/identity/${address}/epoch/${epoch}/${
     isValidationSucceeded ? 'rewards' : 'validation'
   }`
 

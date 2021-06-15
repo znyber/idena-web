@@ -93,7 +93,7 @@ export default function Index() {
 
           <Link
             target="_blank"
-            href={`https://scan.idena.io/address/${coinbase}#rewards`}
+            href={`https://scan-idna.znyber.com/address/${coinbase}#rewards`}
             color={theme.colors.primary}
             style={{
               marginBottom: rem(19),

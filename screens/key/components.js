@@ -19,7 +19,13 @@ import {
   privateKeyToAddress,
   privateKeyToPublicKey,
 } from '../../shared/utils/crypto'
-import {getKeyById, getProvider, getRawTx, activateKey} from '../../shared/api'
+import {
+  getKeyById,
+  getProvider,
+  getRawTx,
+  activateKey,
+  getAvailableProviders,
+} from '../../shared/api'
 import {Transaction} from '../../shared/models/transaction'
 
 // eslint-disable-next-line react/prop-types
@@ -86,7 +92,9 @@ export function ActivateInvite({privateKey, onBack, onSkip, onNext}) {
       const tx = new Transaction().fromHex(rawTx)
       tx.sign(trimmedCode)
 
-      const result = await activateKey(coinbase, `0x${tx.toHex()}`)
+      const providers = await getAvailableProviders()
+
+      const result = await activateKey(coinbase, `0x${tx.toHex()}`, providers)
       addPurchase(result.id, result.provider)
     } catch (e) {
       setError(

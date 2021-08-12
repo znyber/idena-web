@@ -12,14 +12,13 @@ import {
   PopoverTrigger,
   Stack,
   Text,
-} from '@chakra-ui/core'
+  Button,
+} from '@chakra-ui/react'
 import {useTranslation} from 'react-i18next'
 import {Page, PageTitle} from '../../screens/app/components'
 import {
   FlipCardTitle,
   FlipCardSubtitle,
-  FlipFilter,
-  FlipFilterOption,
   RequiredFlipPlaceholder,
   OptionalFlipPlaceholder,
   FlipCardList,
@@ -28,7 +27,6 @@ import {
   DeleteFlipDrawer,
 } from '../../screens/flips/components'
 import {formatKeywords} from '../../screens/flips/utils'
-import {IconLink} from '../../shared/components/link'
 import {
   FlipType,
   IdentityStatus,
@@ -45,15 +43,19 @@ import {redact} from '../../shared/utils/logs'
 import {useIdentity} from '../../shared/providers/identity-context'
 import {useEpoch} from '../../shared/providers/epoch-context'
 import {useOnboarding} from '../../shared/providers/onboarding-context'
-import {
-  activeShowingOnboardingStep,
-  shouldCompleteOnboardingStep,
-} from '../../shared/utils/onboarding'
+import {onboardingShowingStep} from '../../shared/utils/onboarding'
 import {
   OnboardingPopover,
   OnboardingPopoverContent,
   OnboardingPopoverContentIconRow,
 } from '../../shared/components/onboarding'
+import {eitherState} from '../../shared/utils/utils'
+import {
+  PenaltyIcon,
+  PlusSolidIcon,
+  RewardIcon,
+} from '../../shared/components/icons'
+import IconLink from '../../shared/components/icon-link'
 
 export default function FlipListPage() {
   const {t} = useTranslation()
@@ -145,56 +147,57 @@ export default function FlipListPage() {
   const remainingOptionalFlips =
     availableFlipsNumber - Math.max(requiredFlipsNumber, madeFlipsNumber)
 
-  const [
-    currentOnboarding,
-    {done: doneOnboarding, dismiss: dismissOnboarding},
-  ] = useOnboarding()
+  const [currentOnboarding, {dismissCurrentTask}] = useOnboarding()
 
-  const isShowingCreateFlipsPopover = currentOnboarding.matches(
-    activeShowingOnboardingStep(OnboardingStep.CreateFlips)
-  )
-
-  React.useEffect(() => {
-    if (
-      remainingRequiredFlips <= 0 &&
-      shouldCompleteOnboardingStep(
-        currentOnboarding,
-        OnboardingStep.CreateFlips
-      )
-    ) {
-      doneOnboarding()
-    }
-  }, [currentOnboarding, doneOnboarding, remainingRequiredFlips])
+  const eitherOnboardingState = (...states) =>
+    eitherState(currentOnboarding, ...states)
 
   return (
     <Layout>
       <Page>
         <PageTitle>{t('My Flips')}</PageTitle>
         <Flex justify="space-between" align="center" alignSelf="stretch" mb={8}>
-          <FlipFilter
-            value={filter}
-            onChange={value => send('FILTER', {filter: value})}
-          >
-            <FlipFilterOption value={FlipFilterType.Active}>
+          <Stack spacing={2} isInline>
+            <Button
+              variant="tab"
+              onClick={() => send('FILTER', {filter: FlipFilterType.Active})}
+              isActive={filter === FlipFilterType.Active}
+            >
               {t('Active')}
-            </FlipFilterOption>
-            <FlipFilterOption value={FlipFilterType.Draft}>
+            </Button>
+            <Button
+              variant="tab"
+              onClick={() => send('FILTER', {filter: FlipFilterType.Draft})}
+              isActive={filter === FlipFilterType.Draft}
+            >
               {t('Drafts')}
-            </FlipFilterOption>
-            <FlipFilterOption value={FlipFilterType.Archived}>
+            </Button>
+            <Button
+              variant="tab"
+              onClick={() => send('FILTER', {filter: FlipFilterType.Archived})}
+              isActive={filter === FlipFilterType.Archived}
+            >
               {t('Archived')}
-            </FlipFilterOption>
-          </FlipFilter>
+            </Button>
+          </Stack>
           <Box alignSelf="end">
-            <OnboardingPopover isOpen={isShowingCreateFlipsPopover}>
+            <OnboardingPopover
+              isOpen={eitherOnboardingState(
+                onboardingShowingStep(OnboardingStep.CreateFlips)
+              )}
+            >
               <PopoverTrigger>
-                <Box>
+                <Box onClick={dismissCurrentTask}>
                   <IconLink
+                    icon={<PlusSolidIcon boxSize={5} mt={1} />}
                     href="/flips/new"
-                    icon="plus-solid"
                     bg="white"
                     position={
-                      isShowingCreateFlipsPopover ? 'relative' : 'initial'
+                      eitherOnboardingState(
+                        onboardingShowingStep(OnboardingStep.CreateFlips)
+                      )
+                        ? 'relative'
+                        : 'initial'
                     }
                     zIndex={2}
                   >
@@ -204,7 +207,7 @@ export default function FlipListPage() {
               </PopoverTrigger>
               <OnboardingPopoverContent
                 title={t('Create required flips')}
-                onDismiss={dismissOnboarding}
+                onDismiss={dismissCurrentTask}
               >
                 <Stack>
                   <Text>
@@ -212,12 +215,16 @@ export default function FlipListPage() {
                     in the next validation ceremony. Follow step-by-step
                     instructions.`)}
                   </Text>
-                  <OnboardingPopoverContentIconRow icon="reward">
+                  <OnboardingPopoverContentIconRow
+                    icon={<RewardIcon boxSize={5} />}
+                  >
                     {t(
                       `You'll get rewarded for every successfully qualified flip.`
                     )}
                   </OnboardingPopoverContentIconRow>
-                  <OnboardingPopoverContentIconRow icon="penalty">
+                  <OnboardingPopoverContentIconRow
+                    icon={<PenaltyIcon boxSize={5} />}
+                  >
                     {t(`Read carefully "What is a bad flip" rules to avoid
                       penalty.`)}
                   </OnboardingPopoverContentIconRow>

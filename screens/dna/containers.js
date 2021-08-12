@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import * as React from 'react'
-import {Box, Icon, Image, Stack, Text} from '@chakra-ui/core'
+import {Box, Icon, Image, Stack, Text} from '@chakra-ui/react'
 import {useTranslation} from 'react-i18next'
 import {FiGlobe} from 'react-icons/fi'
 import {PrimaryButton, SecondaryButton} from '../../shared/components/button'
@@ -20,6 +20,7 @@ import {
 import {DnaDialogStat} from './components'
 import {useAuthState} from '../../shared/providers/auth-context'
 import {toHexString} from '../../shared/utils/buffers'
+import {openExternalUrl} from '../../shared/utils/utils'
 
 export function DnaSignInDialog({
   query = {},
@@ -107,7 +108,7 @@ export function DnaSignInDialog({
               )
               .then(() => {
                 if (isValidUrl(callbackUrl)) {
-                  window.open(callbackUrl, '_blank')
+                  openExternalUrl(callbackUrl)
                   onDone()
                 } else {
                   setIsAuthenticating(false)

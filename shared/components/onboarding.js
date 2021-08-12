@@ -3,7 +3,6 @@ import React from 'react'
 import {
   Box,
   Button,
-  Icon,
   Popover,
   PopoverArrow,
   PopoverBody,
@@ -12,9 +11,9 @@ import {
   PopoverHeader,
   Stack,
   useTheme,
-} from '@chakra-ui/core'
-import Confetti from 'react-dom-confetti'
+} from '@chakra-ui/react'
 import {useTranslation} from 'react-i18next'
+import {openExternalUrl} from '../utils/utils'
 
 export function OnboardingPopover({children, ...props}) {
   return (
@@ -29,6 +28,7 @@ export function OnboardingPopover({children, ...props}) {
           right={0}
           bottom={0}
           zIndex={2}
+          css={{margin: '0!important', padding: '0!important'}}
         />
       )}
       <Popover closeOnBlur={false} usePortal {...props}>
@@ -57,7 +57,7 @@ export function OnboardingPopoverContent({
       zIndex="popover"
       {...props}
     >
-      <PopoverArrow />
+      <PopoverArrow bg="blue.500" boxShadow="none !important" />
       <Box p={2}>
         <Stack spacing={3}>
           <PopoverHeader
@@ -89,43 +89,9 @@ export function OnboardingPopoverContent({
 export function OnboardingPopoverContentIconRow({icon, children, ...props}) {
   return (
     <Stack isInline spacing={4} align="center" {...props}>
-      {typeof icon === 'string' ? (
-        <Icon name={icon} size={5} />
-      ) : (
-        <Box>{icon}</Box>
-      )}
+      {icon}
       <Box color="white">{children}</Box>
     </Stack>
-  )
-}
-
-export function TaskConfetti({config, ...props}) {
-  return (
-    <Confetti
-      config={{
-        angle: '70',
-        spread: '35',
-        startVelocity: '70',
-        elementCount: '200',
-        dragFriction: '0.15',
-        duration: '3000',
-        stagger: 4,
-        width: '6px',
-        height: '6px',
-        perspective: '1000px',
-        colors: [
-          '#578fff',
-          '#ff6666',
-          '#27d980',
-          '#ffc969',
-          '#ff74e1',
-          '#c08afa',
-          '#8e62f5',
-        ],
-        ...config,
-      }}
-      {...props}
-    />
   )
 }
 
@@ -143,9 +109,7 @@ export function OnboardingLinkButton({href, ...props}) {
       _hover={null}
       _active={null}
       _focus={null}
-      onClick={() => {
-        global.openExternal(href)
-      }}
+      onClick={() => openExternalUrl(href)}
       {...props}
     />
   )

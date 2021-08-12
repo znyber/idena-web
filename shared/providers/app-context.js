@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react'
-import {useToast} from '@chakra-ui/core'
+import {useToast} from '@chakra-ui/react'
 import {useTranslation} from 'react-i18next'
 import {useInterval} from '../hooks/use-interval'
 
@@ -14,7 +14,7 @@ import {
   markFlipsArchived,
 } from '../../screens/flips/utils'
 import {persistItem} from '../utils/persist'
-import {ntp} from '../utils/utils'
+import {ntp, openExternalUrl} from '../utils/utils'
 import {Toast} from '../components/components'
 import {useEpoch} from './epoch-context'
 
@@ -85,7 +85,7 @@ export function AppProvider(props) {
             actionContent={t('Okay')}
             onAction={() => {
               toastProps.onClose()
-              window.open('https://time.is/', '_blank')
+              openExternalUrl('https://time.is/')
             }}
           />
         ),

@@ -6,7 +6,6 @@ import {margin, borderRadius, darken, transparentize, padding} from 'polished'
 import {Trans, useTranslation} from 'react-i18next'
 import {
   Button,
-  Icon,
   Stack,
   Text,
   Flex as ChakraFlex,
@@ -16,7 +15,8 @@ import {
   MenuList,
   MenuItem,
   Menu,
-} from '@chakra-ui/core'
+} from '@chakra-ui/react'
+import {PlusSquareIcon} from '@chakra-ui/icons'
 import {Box, Link} from '.'
 import Flex from './flex'
 import theme, {rem} from '../theme'
@@ -36,14 +36,27 @@ import {
   OnboardingLinkButton,
 } from './onboarding'
 import {
-  activeOnboardingStep,
-  activeShowingOnboardingStep,
-  onboardingStep,
+  buildNextValidationCalendarLink,
+  eitherState,
+  formatValidationDate,
+  openExternalUrl,
+} from '../utils/utils'
+import {
+  onboardingPromotingStep,
+  onboardingShowingStep,
 } from '../utils/onboarding'
 import {
-  buildNextValidationCalendarLink,
-  formatValidationDate,
-} from '../utils/utils'
+  ContactsIcon,
+  DeleteIcon,
+  GalleryIcon,
+  MoreIcon,
+  ProfileIcon,
+  SettingsIcon,
+  SyncIcon,
+  TelegramIcon,
+  WalletIcon,
+} from './icons'
+import {TimerIcon} from '../../screens/validation/components'
 
 function Sidebar() {
   return (
@@ -170,26 +183,22 @@ function Nav() {
           textAlign: 'left',
         }}
       >
-        <NavItem href="/" icon={<Icon name="profile" size={5} />}>
+        <NavItem href="/" icon={<ProfileIcon boxSize={5} />}>
           {t('My Idena') || nickname}
         </NavItem>
-        <NavItem href="/wallets" icon={<Icon name="wallet" size={5} />}>
+        <NavItem href="/wallets" icon={<WalletIcon boxSize={5} />}>
           {t('Wallets')}
         </NavItem>
-        <NavItem href="/flips/list" icon={<Icon name="gallery" size={5} />}>
+        <NavItem href="/flips/list" icon={<GalleryIcon boxSize={5} />}>
           {t('Flips')}
         </NavItem>
-        <NavItem href="/contacts" icon={<Icon name="contacts" size={5} />}>
+        <NavItem href="/contacts" icon={<ContactsIcon boxSize={5} />}>
           {t('Contacts')}
         </NavItem>
-        <NavItem href="/settings" icon={<Icon name="settings" size={5} />}>
+        <NavItem href="/settings" icon={<SettingsIcon boxSize={5} />}>
           {t('Settings')}
         </NavItem>
-        <NavItem
-          href=""
-          icon={<Icon name="delete" size={5} />}
-          onClick={logout}
-        >
+        <NavItem href="" icon={<DeleteIcon boxSize={5} />} onClick={logout}>
           {t('Logout')}
         </NavItem>
       </ul>
@@ -268,33 +277,36 @@ function ActionPanel() {
   const epoch = useEpoch()
   const [identity] = useIdentity()
 
-  const [currentOnboarding, {showCurrentTask, dismiss}] = useOnboarding()
-
-  const shouldActivateInvite = currentOnboarding.matches(
-    activeOnboardingStep(OnboardingStep.ActivateInvite)
-  )
-
-  const shouldValidate = currentOnboarding.matches(
-    activeOnboardingStep(OnboardingStep.Validate)
-  )
-
-  const shouldCreateFlips = currentOnboarding.matches(
-    activeOnboardingStep(OnboardingStep.CreateFlips)
-  )
-
-  const isShowingValidateStep = currentOnboarding.matches(
-    activeShowingOnboardingStep(OnboardingStep.Validate)
-  )
-
-  const shouldActivateMining = currentOnboarding.matches(
-    activeOnboardingStep(OnboardingStep.ActivateMining)
-  )
+  const [
+    currentOnboarding,
+    {showCurrentTask, dismissCurrentTask},
+  ] = useOnboarding()
 
   if (!epoch) {
     return null
   }
 
   const {currentPeriod, nextValidation} = epoch
+
+  const eitherOnboardingState = (...states) =>
+    eitherState(currentOnboarding, ...states)
+
+  const isPromotingNextOnboardingStep =
+    currentPeriod === EpochPeriod.None &&
+    (eitherOnboardingState(
+      onboardingPromotingStep(OnboardingStep.ActivateInvite),
+      onboardingPromotingStep(OnboardingStep.ActivateMining)
+    ) ||
+      (eitherOnboardingState(
+        onboardingPromotingStep(OnboardingStep.Validate)
+      ) &&
+        [IdentityStatus.Candidate, IdentityStatus.Newbie].includes(
+          identity.state
+        )) ||
+      (eitherOnboardingState(
+        onboardingPromotingStep(OnboardingStep.CreateFlips)
+      ) &&
+        [IdentityStatus.Newbie].includes(identity.state)))
 
   return (
     <Box
@@ -311,32 +323,22 @@ function ActionPanel() {
       )}
       <ChakraBox
         roundedTop="md"
-        cursor={currentOnboarding.matches('done') ? 'default' : 'pointer'}
+        cursor={isPromotingNextOnboardingStep ? 'pointer' : 'default'}
         onClick={() => {
-          if (shouldActivateInvite) router.push('/')
           if (
-            currentOnboarding.matches(
-              onboardingStep(OnboardingStep.CreateFlips)
+            eitherOnboardingState(
+              OnboardingStep.ActivateInvite,
+              OnboardingStep.ActivateMining
             )
           )
+            router.push('/')
+          if (eitherOnboardingState(OnboardingStep.CreateFlips))
             router.push('/flips/list')
-          if (shouldActivateMining) router.push('/')
+
           showCurrentTask()
         }}
       >
-        <PulseFrame
-          isActive={
-            currentPeriod === EpochPeriod.None &&
-            (shouldActivateInvite ||
-              (shouldValidate &&
-                [IdentityStatus.Candidate, IdentityStatus.Newbie].includes(
-                  identity.state
-                )) ||
-              shouldActivateMining ||
-              (shouldCreateFlips &&
-                [IdentityStatus.Newbie].includes(identity.state)))
-          }
-        >
+        <PulseFrame isActive={isPromotingNextOnboardingStep}>
           <Block title={t('My current task')}>
             <CurrentTask
               epoch={epoch.epoch}
@@ -349,12 +351,19 @@ function ActionPanel() {
 
       {currentPeriod === EpochPeriod.None && (
         <>
-          <OnboardingPopover isOpen={isShowingValidateStep} placement="right">
+          <OnboardingPopover
+            isOpen={eitherOnboardingState(
+              onboardingShowingStep(OnboardingStep.Validate)
+            )}
+            placement="right"
+          >
             <PopoverTrigger>
               <ChakraBox
                 roundedBottom="md"
                 bg={
-                  isShowingValidateStep
+                  eitherOnboardingState(
+                    onboardingShowingStep(OnboardingStep.Validate)
+                  )
                     ? 'rgba(216, 216, 216, .1)'
                     : 'transparent'
                 }
@@ -368,13 +377,13 @@ function ActionPanel() {
                   <Menu autoSelect={false} mr={1}>
                     <MenuButton
                       rounded="md"
-                      py="3/2"
+                      py={1.5}
                       px="2px"
                       mt="-6px"
                       _expanded={{bg: 'brandGray.500'}}
                       _focus={{outline: 0}}
                     >
-                      <Icon name="more" size={5} />
+                      <MoreIcon boxSize={5} />
                     </MenuButton>
                     <MenuList
                       placement="bottom-end"
@@ -394,14 +403,13 @@ function ActionPanel() {
                         _selected={{bg: 'gray.50'}}
                         _active={{bg: 'gray.50'}}
                         onClick={() => {
-                          global.openExternal(
+                          openExternalUrl(
                             buildNextValidationCalendarLink(nextValidation)
                           )
                         }}
                       >
-                        <Icon
-                          name="plus-square"
-                          size={5}
+                        <PlusSquareIcon
+                          boxSize={5}
                           mr={3}
                           color="brandBlue.500"
                         />
@@ -419,7 +427,7 @@ function ActionPanel() {
                 <Button
                   variant="unstyled"
                   onClick={() => {
-                    global.openExternal(
+                    openExternalUrl(
                       'https://medium.com/idena/how-do-i-start-using-idena-c49418e01a06'
                     )
                   }}
@@ -427,10 +435,12 @@ function ActionPanel() {
                   {t('Read more')}
                 </Button>
               }
-              onDismiss={dismiss}
+              onDismiss={dismissCurrentTask}
             >
               <Stack spacing={5}>
-                <OnboardingPopoverContentIconRow icon="telegram">
+                <OnboardingPopoverContentIconRow
+                  icon={<TelegramIcon boxSize={5} />}
+                >
                   <Trans i18nKey="onboardingValidateSubscribe" t={t}>
                     <OnboardingLinkButton href="https://t.me/IdenaAnnouncements">
                       Subscribe
@@ -438,17 +448,23 @@ function ActionPanel() {
                     to the Idena Announcements (important updates only)
                   </Trans>
                 </OnboardingPopoverContentIconRow>
-                <OnboardingPopoverContentIconRow icon="sync">
+                <OnboardingPopoverContentIconRow
+                  icon={<SyncIcon boxSize={5} />}
+                >
                   {t(
                     `Keep your node synchronized in 45-60 minutes before the validation starts.`
                   )}
                 </OnboardingPopoverContentIconRow>
-                <OnboardingPopoverContentIconRow icon="timer">
+                <OnboardingPopoverContentIconRow
+                  icon={<TimerIcon boxSize={5} />}
+                >
                   {t(
                     `Solve the flips quickly when validation starts. The first 6 flips must be submitted in less than 2 minutes.`
                   )}
                 </OnboardingPopoverContentIconRow>
-                <OnboardingPopoverContentIconRow icon="gallery">
+                <OnboardingPopoverContentIconRow
+                  icon={<GalleryIcon boxSize={5} />}
+                >
                   <Trans i18nKey="onboardingValidateTest" t={t}>
                     <OnboardingLinkButton href="https://flips.idena.io/?pass=idena.io">
                       Test yourself
@@ -544,7 +560,7 @@ function CurrentTask({epoch, period}) {
 
   const [identity] = useIdentity()
 
-  const [onboardingState] = useOnboarding()
+  const [currentOnboarding] = useOnboarding()
 
   if (!period || !identity || !identity.state) return null
 
@@ -555,8 +571,6 @@ function CurrentTask({epoch, period}) {
         requiredFlips: requiredFlipsNumber,
         availableFlips: availableFlipsNumber,
         state: status,
-        age,
-        online,
       } = identity
 
       switch (true) {
@@ -567,11 +581,7 @@ function CurrentTask({epoch, period}) {
             </Link>
           )
 
-        case age === 1 &&
-          !online &&
-          onboardingState.matches(
-            onboardingStep(OnboardingStep.ActivateMining)
-          ): {
+        case currentOnboarding.matches(OnboardingStep.ActivateMining): {
           return t('Activate mining status')
         }
 

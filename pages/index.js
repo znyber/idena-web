@@ -1,15 +1,15 @@
 import React, {useEffect} from 'react'
 import {
   Box,
-  Icon,
   PopoverTrigger,
   Stack,
   Text,
   useDisclosure,
   useToast,
-} from '@chakra-ui/core'
+} from '@chakra-ui/react'
 import {useTranslation} from 'react-i18next'
 import {useQuery, useQueryClient} from 'react-query'
+import {useRouter} from 'next/router'
 import {Page, PageTitle} from '../screens/app/components'
 import {
   UserInlineCard,
@@ -31,31 +31,31 @@ import {
   toLocaleDna,
   mapIdentityToFriendlyStatus,
   eitherState,
+  openExternalUrl,
 } from '../shared/utils/utils'
 import {hasPersistedValidationResults} from '../screens/validation/utils'
-import {IconLink} from '../shared/components/link'
 import {useIdentity} from '../shared/providers/identity-context'
 import {useEpoch} from '../shared/providers/epoch-context'
 import {fetchBalance} from '../shared/api/wallet'
 import {useAuthState} from '../shared/providers/auth-context'
-import {IconButton2, PrimaryButton} from '../shared/components/button'
+import {IconButton, PrimaryButton} from '../shared/components/button'
 import {validDnaUrl} from '../shared/utils/dna-link'
 import {DnaSignInDialog} from '../screens/dna/containers'
-import {FillCenter, Toast} from '../shared/components/components'
+import {Toast} from '../shared/components/components'
 import {useOnboarding} from '../shared/providers/onboarding-context'
-import {
-  activeShowingOnboardingStep,
-  doneOnboardingStep,
-  onboardingStep,
-  shouldCompleteOnboardingStep,
-  shouldTransitionToCreateFlipsStep,
-} from '../shared/utils/onboarding'
 import {
   OnboardingPopover,
   OnboardingPopoverContent,
   OnboardingPopoverContentIconRow,
-  TaskConfetti,
 } from '../shared/components/onboarding'
+import {onboardingShowingStep} from '../shared/utils/onboarding'
+import {useScroll} from '../shared/hooks/use-scroll'
+import {
+  AddUserIcon,
+  DeleteIcon,
+  PhotoIcon,
+  TelegramIcon,
+} from '../shared/components/icons'
 
 export default function ProfilePage() {
   const queryClient = useQueryClient()
@@ -77,12 +77,12 @@ export default function ProfilePage() {
       delegatee,
       delegationEpoch,
       canMine,
-      isValidated,
-      requiredFlips,
-      flips,
       canInvite,
+      canTerminate,
     },
   ] = useIdentity()
+
+  const router = useRouter()
 
   const epoch = useEpoch()
   const {coinbase, privateKey} = useAuthState()
@@ -140,76 +140,11 @@ export default function ProfilePage() {
 
   const [
     currentOnboarding,
-    {
-      done: doneStep,
-      dismiss: dismissStep,
-      finish: finishOnboarding,
-      rollback: rollbackStep,
-    },
+    {dismissCurrentTask, next: nextOnboardingTask},
   ] = useOnboarding()
 
-  React.useEffect(() => {
-    if (
-      state === IdentityStatus.Candidate &&
-      shouldCompleteOnboardingStep(
-        currentOnboarding,
-        OnboardingStep.ActivateInvite
-      )
-    ) {
-      doneStep()
-    }
-  }, [currentOnboarding, doneStep, state])
-
-  React.useEffect(() => {
-    if (
-      isValidated &&
-      shouldCompleteOnboardingStep(currentOnboarding, OnboardingStep.Validate)
-    ) {
-      doneStep()
-    }
-  }, [currentOnboarding, doneStep, isValidated])
-
-  React.useEffect(() => {
-    if (
-      !isValidated &&
-      age > 0 &&
-      eitherState(currentOnboarding, onboardingStep(OnboardingStep.Validate))
-    ) {
-      rollbackStep()
-    }
-  }, [age, currentOnboarding, isValidated, rollbackStep])
-
-  React.useEffect(() => {
-    if (
-      online &&
-      shouldCompleteOnboardingStep(
-        currentOnboarding,
-        OnboardingStep.ActivateMining
-      )
-    ) {
-      if (
-        shouldTransitionToCreateFlipsStep({isValidated, requiredFlips, flips})
-      )
-        doneStep()
-      else finishOnboarding()
-    }
-  }, [
-    currentOnboarding,
-    doneStep,
-    finishOnboarding,
-    flips,
-    isValidated,
-    online,
-    requiredFlips,
-  ])
-
-  const isShowingActivateMiningPopover = currentOnboarding.matches(
-    activeShowingOnboardingStep(OnboardingStep.ActivateMining)
-  )
-
-  const isShowingActivateInvitePopover = currentOnboarding.matches(
-    activeShowingOnboardingStep(OnboardingStep.ActivateInvite)
-  )
+  const eitherOnboardingState = (...states) =>
+    eitherState(currentOnboarding, ...states)
 
   const {
     isOpen: isOpenActivateInvitePopover,
@@ -217,21 +152,25 @@ export default function ProfilePage() {
     onClose: onCloseActivateInvitePopover,
   } = useDisclosure()
 
+  const activateInviteRef = React.useRef()
+
+  const {scrollTo: scrollToActivateInvite} = useScroll(activateInviteRef)
+
   React.useEffect(() => {
-    if (isShowingActivateInvitePopover) {
-      document
-        .querySelectorAll('#__next section')[1]
-        .querySelector('div')
-        .scroll({
-          left: 0,
-          top: 9999,
-        })
+    if (
+      eitherState(
+        currentOnboarding,
+        onboardingShowingStep(OnboardingStep.ActivateInvite)
+      )
+    ) {
+      scrollToActivateInvite()
       onOpenActivateInvitePopover()
     } else onCloseActivateInvitePopover()
   }, [
-    isShowingActivateInvitePopover,
+    currentOnboarding,
     onCloseActivateInvitePopover,
     onOpenActivateInvitePopover,
+    scrollToActivateInvite,
   ])
 
   return (
@@ -325,13 +264,15 @@ export default function ProfilePage() {
               placement="top-start"
             >
               <PopoverTrigger>
-                <ActivateInviteForm zIndex={2} />
+                <Box zIndex={2}>
+                  <ActivateInviteForm ref={activateInviteRef} />
+                </Box>
               </PopoverTrigger>
               <OnboardingPopoverContent
                 title={t('Enter invitation code')}
                 zIndex={2}
                 onDismiss={() => {
-                  dismissStep()
+                  dismissCurrentTask()
                   onCloseActivateInvitePopover()
                 }}
               >
@@ -346,15 +287,15 @@ export default function ProfilePage() {
                       {t(`Join the official Idena public Telegram group and follow instructions in the
                 pinned message.`)}
                     </Text>
-                    <OnboardingPopoverContentIconRow icon="telegram">
+                    <OnboardingPopoverContentIconRow
+                      icon={<TelegramIcon boxSize={5} />}
+                    >
                       <Box>
                         <PrimaryButton
                           variant="unstyled"
                           p={0}
                           onClick={() => {
-                            global.openExternal(
-                              'https://t.me/IdenaNetworkPublic'
-                            )
+                            openExternalUrl('https://t.me/IdenaNetworkPublic')
                           }}
                         >
                           https://t.me/IdenaNetworkPublic
@@ -368,30 +309,23 @@ export default function ProfilePage() {
                 </Stack>
               </OnboardingPopoverContent>
             </OnboardingPopover>
-            <FillCenter position="absolute" top="50%" left="50%" zIndex={9999}>
-              <TaskConfetti
-                active={
-                  eitherState(
-                    currentOnboarding,
-                    `${doneOnboardingStep(OnboardingStep.ActivateInvite)}.salut`
-                  ) ||
-                  (eitherState(
-                    currentOnboarding,
-                    `${doneOnboardingStep(OnboardingStep.Validate)}.salut`
-                  ) &&
-                    state === IdentityStatus.Newbie)
-                }
-              />
-            </FillCenter>
           </Stack>
           <Stack spacing={10} w={48}>
             <Box minH={62} mt={4}>
-              <OnboardingPopover isOpen={isShowingActivateMiningPopover}>
+              <OnboardingPopover
+                isOpen={eitherOnboardingState(
+                  onboardingShowingStep(OnboardingStep.ActivateMining)
+                )}
+              >
                 <PopoverTrigger>
                   <Box
                     bg="white"
                     position={
-                      isShowingActivateMiningPopover ? 'relative' : 'initial'
+                      eitherOnboardingState(
+                        onboardingShowingStep(OnboardingStep.ActivateMining)
+                      )
+                        ? 'relative'
+                        : 'initial'
                     }
                     borderRadius="md"
                     p={2}
@@ -404,34 +338,14 @@ export default function ProfilePage() {
                         isOnline={online}
                         delegatee={delegatee}
                         delegationEpoch={delegationEpoch}
-                        onShow={() => {
-                          if (
-                            shouldTransitionToCreateFlipsStep({
-                              isValidated,
-                              requiredFlips,
-                              flips,
-                            })
-                          )
-                            doneStep()
-                          else finishOnboarding()
-                        }}
+                        onShow={nextOnboardingTask}
                       />
                     )}
                   </Box>
                 </PopoverTrigger>
                 <OnboardingPopoverContent
                   title={t('Activate mining status')}
-                  onDismiss={() => {
-                    if (
-                      shouldTransitionToCreateFlipsStep({
-                        isValidated,
-                        requiredFlips,
-                        flips,
-                      })
-                    )
-                      doneStep()
-                    else finishOnboarding()
-                  }}
+                  onDismiss={nextOnboardingTask}
                 >
                   <Text>
                     {t(
@@ -442,23 +356,26 @@ export default function ProfilePage() {
               </OnboardingPopover>
             </Box>
             <Stack spacing={1} align="flex-start">
-              <IconLink href="/flips/new" icon={<Icon name="photo" size={5} />}>
+              <IconButton
+                onClick={() => router.push('/flips/new')}
+                icon={<PhotoIcon boxSize={5} />}
+              >
                 {t('New flip')}
-              </IconLink>
-              <IconLink
-                href="/contacts?new"
+              </IconButton>
+              <IconButton
+                onClick={() => router.push('/contacts?new')}
                 isDisabled={!canInvite}
-                icon={<Icon name="add-user" size={5} />}
+                icon={<AddUserIcon boxSize={5} />}
               >
                 {t('Invite')}
-              </IconLink>
-              <IconButton2
-                isDisabled={!true}
-                icon="delete"
+              </IconButton>
+              <IconButton
+                isDisabled={!canTerminate}
+                icon={<DeleteIcon boxSize={5} />}
                 onClick={onOpenKillForm}
               >
                 {t('Terminate')}
-              </IconButton2>
+              </IconButton>
             </Stack>
           </Stack>
         </Stack>

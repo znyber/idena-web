@@ -1,5 +1,6 @@
 import {theme as chakraTheme} from '@chakra-ui/react'
 import {rem as remp, rgb, margin} from 'polished'
+import {createBreakpoints} from '@chakra-ui/theme-tools'
 
 const colors = {
   primary: 'rgb(87, 143, 255)',
@@ -112,8 +113,6 @@ export function rem(value) {
   return remp(value, baseFontSize)
 }
 
-const breakpoints = ['40em', '52em', '64em']
-
 export const uiTheme = {
   colors: {
     black: '#16161D',
@@ -127,6 +126,7 @@ export const uiTheme = {
     },
     gray: {
       50: 'rgb(245 246 247)',
+      '030': 'rgb(83 86 92 /0.30)',
       100: 'rgb(232 234 237)',
       200: 'rgb(210 212 217)',
       300: 'rgb(150 153 158)',
@@ -134,6 +134,7 @@ export const uiTheme = {
       600: 'rgb(83 86 92)',
       800: 'rgb(83 86 92)',
       900: 'rgb(17 17 17)',
+      980: 'rgba(17 17 17 /0.80)',
     },
     red: {
       '010': 'rgb(255 102 102 /0.10)',
@@ -151,6 +152,7 @@ export const uiTheme = {
     },
     warning: {
       '016': 'rgba(255, 163, 102, 0.16)',
+      '020': 'rgba(255, 163, 102, 0.2)',
       100: 'rgba(255, 163, 102, 0.2)',
       400: 'rgb(255, 163, 102)',
       500: 'rgb(255, 163, 102)',
@@ -190,8 +192,11 @@ export const uiTheme = {
       '080': 'rgb(0 0 0 /0.8)',
     },
     xwhite: {
+      '010': 'rgba(255, 255, 255, 0.1)',
+      '016': 'rgba(255, 255, 255, 0.16)',
       '050': 'rgba(255, 255, 255, 0.5)',
       '080': 'rgba(255, 255, 255, 0.8)',
+      '500': 'rgba(255, 255, 255)',
     },
     graphite: {
       500: 'rgb(69 72 77)',
@@ -213,11 +218,19 @@ export const uiTheme = {
     sm: '11px',
     md: '13px',
     mdx: '14px',
+    mobile: '15px',
     base: '16px',
     lg: '18px',
     xl: '28px',
   },
-  breakpoints,
+  breakpoints: createBreakpoints({
+    base: '0px',
+    sm: '480px',
+    md: '9999px',
+    lg: '9999px',
+    xl: '9999px',
+    '2xl': '9999px',
+  }),
   space: {
     ...chakraTheme.space,
     '1/2': '2px',
@@ -231,7 +244,9 @@ export const uiTheme = {
     ...chakraTheme.radii,
     sm: '0.25rem',
     md: rem(6),
+    lg: rem(8),
     xl: '0.75rem',
+    mobile: '28px',
   },
   components: {
     Radio: {
@@ -245,17 +260,31 @@ export const uiTheme = {
         },
       },
     },
+    Checkbox: {
+      variants: {
+        mobile: {
+          control: {h: 5, w: 5},
+          label: {fontSize: 'md'},
+        },
+      },
+    },
     Button: {
       baseStyle: {fontWeight: 500},
       sizes: {
         md: {h: 8},
+        lg: {
+          h: 12,
+          px: 3,
+          borderRadius: 'lg',
+          fontSize: '15px',
+          fontWeight: '400',
+        },
       },
       variants: {
         primary: {
           bg: 'blue.500',
           color: 'white',
           borderRadius: 6,
-          h: 8,
           px: 4,
           _hover: {
             bg: 'rgb(68, 124, 235)',
@@ -271,7 +300,6 @@ export const uiTheme = {
           bg: 'blue.012',
           color: 'blue.500',
           borderRadius: 6,
-          h: 8,
           px: 4,
           _hover: {
             bg: 'blue.024',
@@ -320,6 +348,14 @@ export const uiTheme = {
             fontSize: 'md',
           },
         },
+        lg: {
+          field: {
+            h: 12,
+            px: 3,
+            borderRadius: 'lg',
+            fontSize: '15px',
+          },
+        },
       },
       variants: {
         outline: {
@@ -336,6 +372,28 @@ export const uiTheme = {
               color: 'muted',
             },
           },
+        },
+        mobile: {
+          field: {
+            borderColor: 'gray.100',
+            _hover: {
+              borderColor: 'gray.100',
+            },
+            _placeholder: {
+              color: 'muted',
+            },
+            _disabled: {
+              bg: 'xblack.016',
+              color: 'xwhite.016',
+            },
+          },
+        },
+      },
+    },
+    Modal: {
+      variants: {
+        mobile: {
+          dialogContainer: {alignItems: 'flex-end'},
         },
       },
     },
